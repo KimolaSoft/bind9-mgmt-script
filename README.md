@@ -9,6 +9,21 @@ Bind9 management script to simplify adding and removing records via nsupdate
 - Can add A, NS, and PTR records so far
 - Can list existing entries of specific type from selected zone
 
+## Use
+
+- Requires: nsupdate and dig
+  - The nsupdate key file can be created by removing all other sections from a named.conf file leaving only the key "whatever" section containing the algoithm and secret.
+- Expects to talk to a server 
+- Note: Most testing has been done against an IP on the same host, but any system which can perform zone transfers and is permitted by IP to perform domain updates should function.
+- Parameters can be specified in any order
+- Default is 'add' and 'A' record
+
+```sh
+# Sample call to add ns1 A and NS records to domain foo.bar.local for IP 192.168.1.10
+dnsedit ns1 192.168.1.10 foo.bar.local
+dnsedit NS ns1 foo.bar.local
+```
+
 ## Future Updates (soon)
 
 - Help menu

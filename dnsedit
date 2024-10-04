@@ -36,7 +36,7 @@ while [[ $# -gt 0 ]]; do
     *)
       if [[ ${ALLZONES[@]} =~ \"$lc\" ]]; then ZONE=$lc
       elif [[ $lc =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then IP=$lc
-      elif [[ ${ALLZONES[@]} =~ \"$lc.$BASE\" ]]; then ZONE=$lc
+      elif [[ ${ALLZONES[@]} =~ \"$lc.$BASE\" ]]; then ZONE=$lc.$BASE
       elif [[ $lc != ${lc/\./} ]]; then echo "$lc not valid zone or IP"
       elif [[ -z $ENTRY ]]; then ENTRY=$lc
       elif [[ -z $ENTRY2 ]]; then ENTRY2=$lc

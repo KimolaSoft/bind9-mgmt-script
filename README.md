@@ -14,7 +14,7 @@ Bind9 management script to simplify adding and removing records via nsupdate
 - Requires: nsupdate and dig
   - The nsupdate key file can be created by removing all other sections from a named.conf file leaving only the key "whatever" section containing the algoithm and secret.
 - Expects to talk to a server 
-- Note: Most testing has been done against an IP on the same host, but any system which can perform zone transfers and is permitted by IP to perform domain updates should function.
+- Note: Most testing has been done against an IP on the same host, but any system which can perform zone transfers and is permitted by IP to perform domain updates should function. The named.conf file is parsed, so a copy of it would be required on the remote system, but that path is configurable
 - Parameters can be specified in any order
 - Default is 'add' and 'A' record
 

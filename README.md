@@ -5,7 +5,7 @@ Bind9 management script to simplify adding and removing records via nsupdate
 ## Features
 
 - Tries to understand what you're asking for
-  - Searches input to match short reference to zone names
+  - Searches input to match short reference to zone names (based on BASE name)
 - Can add A, NS, and PTR records so far
 - Can list existing entries of specific type from selected zone
 

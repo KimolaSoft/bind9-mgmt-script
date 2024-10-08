@@ -54,8 +54,8 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
-[[ -z $VERBOSE ]] || dump
 if [[ -z $ZONE && -n $ASSUMEBASEZONE ]]; then ZONE=$BASE; fi
+[[ -z $VERBOSE ]] || dump
 
 TOPS="server $SERVERIP\n"
 TOP="${TOPS}zone $ZONE\n"
@@ -91,6 +91,7 @@ function check() {
   if [[ -n $IP ]]; then has_ip=$(grep "$IP$" <<< $exists); fi
   has_name=$(grep "^$ENTRY.$ZONE" <<<$exists)
   if [[ -n $ENTRY2 ]]; then has_name2=$(grep "^$ENTRY2.$ZONE" <<<$exists); fi
+  [[ -z $VERBOSE ]] || echo "Entries: $has_name $has_name2"
   if [[ -z $has_name && -n $has_name2 ]] && isNS; then z=$ENTRY2; ENTRY2=$ENTRY; ENTRY=$z; fi
   if [[ $TYPE == A ]] || isPTR; then
     PTRIP=$(awk -F. '{print $4"."$3"."$2"."$1}' <<<$IP)

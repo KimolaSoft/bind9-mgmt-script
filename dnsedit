@@ -75,7 +75,7 @@ function doAddPTR() {
 }
 
 function doAddNS() {
-  echo -e "${TOP}update add $ENTRY2.$ZONE. 7200 $TYPE $ENTRY.$ZONE\n${BOT}" | nsupdate -k "$KEYFILE"
+  echo -e "${TOP}update add $ENTRY.$ZONE. 7200 $TYPE $ENTRY2.$ZONE\n${BOT}" | nsupdate -k "$KEYFILE"
 }
 
 function isPTR() { [[ $TYPE == PTR ]]; }
@@ -96,6 +96,7 @@ function check() {
   if [[ $TYPE == A ]] || isPTR; then
     PTRIP=$(awk -F. '{print $4"."$3"."$2"."$1}' <<<$IP)
   fi
+dump
   if isA || isPTR; then
     zonetmp="${PTRIP#*.*}.in-addr.arpa"
     for n in $(seq 1 3); do

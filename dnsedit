@@ -122,7 +122,7 @@ dump
   elif isPTR && [[ -z $ZONEPTR ]]; then echo "Could not identify PTR zone for $IP"; return 1
   elif isPTR && [[ -n $has_ptr ]]; then echo "PTR record already exists!"; return 1
   fi
-  if isNS; then echo "Adding $TYPE $ENTRY2 to zone $ZONE stub $ENTRY"
+  if isNS; then echo "Adding $TYPE $ENTRY to zone $ZONE stub $ENTRY2"
   else echo "Adding $TYPE $ENTRY with IP $IP to zone $ZONE"; fi
   read -p "Press <enter> to continue"
   # Return 0 to continue

@@ -18,8 +18,14 @@ ENTRY2=''
 IP=''
 TYPE='A'
 OPERATION='Add'
+VERBOSE=''
 
 ALLZONES=($(grep 'zone ' "$NAMEDCONF" | awk '{print $2}' | tr '[:upper:]' '[:lower:]'))
+
+function dump() {
+  echo "ZONE: $ZONE ; IP: $IP"
+  echo "ENTRY: $ENTRY ; ENTRY2: $ENTRY2"
+}
 
 # Parse input options and figure out what someone has asked for...
 while [[ $# -gt 0 ]]; do
@@ -32,6 +38,7 @@ while [[ $# -gt 0 ]]; do
     del) OPERATION='Del' ;;
     add) OPERATION='Add' ;;
     list|ls) OPERATION='List' ;;
+    -v*) VERBOSE='yes' ;;
     1*) IP=$1 ;;
     *)
       if [[ ${ALLZONES[@]} =~ \"$lc\" ]]; then ZONE=$lc
@@ -47,6 +54,7 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+[[ -z $VERBOSE ]] || dump
 if [[ -z $ZONE && -n $ASSUMEBASEZONE ]]; then ZONE=$BASE; fi
 
 TOPS="server $SERVERIP\n"

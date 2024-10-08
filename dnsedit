@@ -140,7 +140,7 @@ function check() {
   elif (isAdd && [[ -n $has_ip ]] && ! isPTR); then echo "IP exists already $has_ip"; return 1
   #elif (isDel && [[ -z $has_ip ]]); then echo "Cannot find IP $IP to delete!"; return 1
   elif (isAdd && [[ -n $has_name ]] && ! isPTR); then echo "Name exists already $has_name"; return 1
-  elif (isDel && [[ -z $has_name ]]); then ehco "Cannot find $ENTRY to delete it!"; return 1
+  elif (isDel && [[ -z $has_name ]]); then echo "Cannot find $ENTRY to delete it!"; return 1
   elif [[ -z $has_name ]] && isPTR; then echo "Name $ENTRY does not exist yet!"; return 1
   elif isPTR && [[ -z $ZONEPTR ]]; then echo "Could not identify PTR zone for $IP"; return 1
   elif isPTR && [[ -n $has_ptr ]]; then echo "PTR record already exists!"; return 1

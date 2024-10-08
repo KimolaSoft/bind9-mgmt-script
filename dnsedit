@@ -84,23 +84,24 @@ function isNS() { [[ $TYPE == NS ]]; }
 function isA() { [[ $TYPE == A ]]; }
 function isCNAME() { [[ $TYPE == CNAME ]]; }
 
-function lookup() {
+function lookupZone() {
   grep "^$1.$ZONE" <<<$EXISTING_RECORDS
+}
+function lookupIP() {
+  grep "$1$" <<<$EXISTING_RECORDS
 }
 
 function check() {
   has_ip=''
   has_name2=''
   has_ptr=''
-  if [[ -n $IP ]]; then has_ip=$(grep "$IP$" <<< $exists); fi
-  has_name=$(lookup $ENTRY)
-  if [[ -n $ENTRY2 ]]; then has_name2=$(lookup $ENTRY2); fi
-  [[ -z $VERBOSE ]] || echo "Entries: $has_name $has_name2"
-  if [[ -n $has_name && -z $has_name2 ]] && isNS; then z=$ENTRY2; ENTRY2=$ENTRY; ENTRY=$z; has_name=$(lookup $ENTRY); has_name2=$(lookup $ENTRY2);fi
+  if [[ -n $IP ]]; then has_ip=$(lookupIP $IP); fi
+  has_name=$(lookupZone $ENTRY)
+  if [[ -n $ENTRY2 ]]; then has_name2=$(lookupZone $ENTRY2); fi
+  if [[ -n $has_name && -z $has_name2 ]] && isNS; then z=$ENTRY2; ENTRY2=$ENTRY; ENTRY=$z; has_name=$(lookupZone $ENTRY); has_name2=$(lookupZone $ENTRY2);fi
   if [[ $TYPE == A ]] || isPTR; then
     PTRIP=$(awk -F. '{print $4"."$3"."$2"."$1}' <<<$IP)
   fi
-dump
   if isA || isPTR; then
     zonetmp="${PTRIP#*.*}.in-addr.arpa"
     for n in $(seq 1 3); do

@@ -55,6 +55,7 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 if [[ -z $ZONE && -n $ASSUMEBASEZONE ]]; then ZONE=$BASE; fi
+EXISTING_RECORDS=$(dig +noquestion +nocmd +nocomments +nostat @$SERVERIP AXFR $ZONE)
 [[ -z $VERBOSE ]] || dump
 
 TOPS="server $SERVERIP\n"
@@ -83,16 +84,19 @@ function isNS() { [[ $TYPE == NS ]]; }
 function isA() { [[ $TYPE == A ]]; }
 function isCNAME() { [[ $TYPE == CNAME ]]; }
 
+function lookup() {
+  grep "^$1.$ZONE" <<<$EXISTING_RECORDS
+}
+
 function check() {
-  exists=$(dig +noquestion +nocmd +nocomments +nostat @$SERVERIP AXFR $ZONE)
   has_ip=''
   has_name2=''
   has_ptr=''
   if [[ -n $IP ]]; then has_ip=$(grep "$IP$" <<< $exists); fi
-  has_name=$(grep "^$ENTRY.$ZONE" <<<$exists)
-  if [[ -n $ENTRY2 ]]; then has_name2=$(grep "^$ENTRY2.$ZONE" <<<$exists); fi
+  has_name=$(lookup $ENTRY)
+  if [[ -n $ENTRY2 ]]; then has_name2=$(lookup $ENTRY2); fi
   [[ -z $VERBOSE ]] || echo "Entries: $has_name $has_name2"
-  if [[ -z $has_name && -n $has_name2 ]] && isNS; then z=$ENTRY2; ENTRY2=$ENTRY; ENTRY=$z; fi
+  if [[ -n $has_name && -z $has_name2 ]] && isNS; then z=$ENTRY2; ENTRY2=$ENTRY; ENTRY=$z; has_name=$(lookup $ENTRY); has_name2=$(lookup $ENTRY2);fi
   if [[ $TYPE == A ]] || isPTR; then
     PTRIP=$(awk -F. '{print $4"."$3"."$2"."$1}' <<<$IP)
   fi

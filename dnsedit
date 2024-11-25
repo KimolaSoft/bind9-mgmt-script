@@ -135,6 +135,7 @@ function check() {
   if [[ -z $ZONE ]]; then echo "You did not specify a zone"; return 1
   elif [[ -z $ENTRY ]]; then echo "You did not specify a name to edit"; return 1
   elif isNS && [[ -z $ENTRY2 ]]; then echo "You did not specify a glue record to add"; return 1
+  elif isCNAME && [[ -z $has_name2 ]]; then echo "Specified A record '$ENTRY2' does not exist - create the A record first"; return 1
   elif isNS && [[ -z $has_name2 ]]; then echo "Specified glue record '$ENTRY2' does not exist"; return 1
   elif [[ -z $IP ]] && ! isNS && ! isCNAME; then echo "You did not specify an IP to add"; return 1
   elif (isAdd && [[ -n $has_ip ]] && ! isPTR); then echo "IP exists already $has_ip"; return 1

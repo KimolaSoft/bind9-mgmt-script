@@ -136,7 +136,7 @@ function check() {
   elif [[ -z $ENTRY ]]; then echo "You did not specify a name to edit"; return 1
   elif isNS && [[ -z $ENTRY2 ]]; then echo "You did not specify a glue record to add"; return 1
   elif isNS && [[ -z $has_name2 ]]; then echo "Specified glue record '$ENTRY2' does not exist"; return 1
-  elif [[ -z $IP ]] && ! isNS; then echo "You did not specify an IP to add"; return 1
+  elif [[ -z $IP ]] && ! isNS && ! isCNAME; then echo "You did not specify an IP to add"; return 1
   elif (isAdd && [[ -n $has_ip ]] && ! isPTR); then echo "IP exists already $has_ip"; return 1
   #elif (isDel && [[ -z $has_ip ]]); then echo "Cannot find IP $IP to delete!"; return 1
   elif (isDel && [[ -z $has_name ]]); then echo "Cannot find $ENTRY to delete it!"; return 1

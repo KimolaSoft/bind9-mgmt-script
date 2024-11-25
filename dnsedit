@@ -90,7 +90,7 @@ function doDelPTR() {
 }
 
 function doAddNS() {
-  [[ -n $TTL ]] || TTL=7200
+  [[ -n $TTL ]] || TTL=21600
   echo -e "${TOP}update add $ENTRY.$ZONE. $TTL $TYPE $ENTRY2.$ZONE\n${BOT}" | nsupdate -k "$KEYFILE"
 }
 

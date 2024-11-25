@@ -149,8 +149,9 @@ function check() {
   elif (isAdd && [[ -n $has_name ]] && ! isPTR); then echo "Name exists already $has_name"
   fi
   if isAdd; then echo -n 'Adding'; elif isDel; then echo -n 'Deleting'; fi
-  echo " $TYPE $ENTRY "
+  echo -n " $TYPE $ENTRY "
   if isNS; then echo "to zone $ZONE stub $ENTRY2"
+  elif isCNAME; then echo "-> $ENTRY2 to zone $ZONE"
   else echo "with IP $IP to zone $ZONE"; fi
   read -p "Press <enter> to continue"
   # Return 0 to continue

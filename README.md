@@ -36,7 +36,8 @@ dnsedit NS ns1 foo.bar.local
 - Adding MX/SOA entries 
 - Checking if entries exist to delete/replace or prompt for their replacement
 
-## Support / Donation options
-BTC / Bitcoin Network: 335tkaVGpoe9Ff44XcPzEEJfDW5aUnsz3G
-BTC / Ethereum Network: 0x2Ad50f6EcdE05C5e9c0E5F948D7F8Cc78A2806b1
-ETH / Ethereum Network: 0xfb80606A020cd777E821ea3515EcFE3e58508aC8
+## Support / Donation / Thanks options
+
+- BTC / Bitcoin Network: 335tkaVGpoe9Ff44XcPzEEJfDW5aUnsz3G
+- BTC / Ethereum Network: 0x2Ad50f6EcdE05C5e9c0E5F948D7F8Cc78A2806b1
+- ETH / Ethereum Network: 0xfb80606A020cd777E821ea3515EcFE3e58508aC8

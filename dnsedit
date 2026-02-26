@@ -119,22 +119,10 @@ function doAddA() {
   [[ -n $TTL ]] || TTL=86400
   echo -e "${TOP}update add $ENTRY.$ZONE $TTL $TYPE $IP\n${BOT}" | nsupdate -k "$KEYFILE"
   
-  # Auto-create PTR if enabled and IP is IPv4
-  if [[ -n $AUTOPTR && $IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    PTRIP=$(awk -F. '{print $4"."$3"."$2"."$1}' <<<$IP)
-    # Find PTR zone
-    zonetmp="${PTRIP#*.*}.in-addr.arpa"
-    ZONEPTR=''
-    for n in $(seq 1 3); do
-      if [[ ${ALLZONES[@]} =~ "$zonetmp" ]]; then ZONEPTR=$zonetmp; fi
-      zonetmp="${zonetmp#*.*}"
-    done
-    if [[ -n $ZONEPTR ]]; then
-      echo "Auto-creating PTR record: $PTRIP.in-addr.arpa -> $ENTRY.$ZONE"
-      echo -e "server $SERVERIP\nzone $ZONEPTR\nupdate add $PTRIP.in-addr.arpa. 4800 PTR $ENTRY.$ZONE.\nshow\nsend" | nsupdate -k "$KEYFILE"
-    else
-      echo "Warning: Could not find PTR zone for $IP" >&2
-    fi
+  # Auto-create PTR if enabled (PTRIP and ZONEPTR already computed in check())
+  if [[ -n $AUTOPTR && -n $ZONEPTR ]]; then
+    echo "Auto-creating PTR record: $PTRIP.in-addr.arpa -> $ENTRY.$ZONE"
+    echo -e "server $SERVERIP\nzone $ZONEPTR\nupdate add $PTRIP.in-addr.arpa. 4800 PTR $ENTRY.$ZONE.\nshow\nsend" | nsupdate -k "$KEYFILE"
   fi
 }
 

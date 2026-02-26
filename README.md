@@ -6,8 +6,11 @@ Bind9 management script to simplify adding and removing records via nsupdate
 
 - Tries to understand what you're asking for
   - Searches input to match short reference to zone names (based on BASE name)
-- Can add A, NS, and PTR records so far
+- Supports A, NS, PTR, CNAME, MX, and TXT records
 - Can list existing entries of specific type from selected zone
+- Non-interactive mode for scripting (`-y` flag)
+- Automatic PTR record creation when adding A records (use `noptr` to disable)
+- Help menu available (`-?` or `-h` or `--help`)
 
 ## Use
 
@@ -20,25 +23,40 @@ Bind9 management script to simplify adding and removing records via nsupdate
 
 ```sh
 # Sample call to add ns1 A and NS records to domain foo.bar.local for IP 192.168.1.10
-dnsedit ns1 192.168.1.10 foo.bar.local
-dnsedit NS ns1 foo.bar.local
+dnsedit ns1 192.168.1.10 foo
+dnsedit NS ns1 foo
+
+# Delete a record (non-interactive)
+dnsedit -y del ns1 foo
+
+# List all A records in a zone
+dnsedit list foo
+
+# Add MX record
+dnsedit mx mail foo
+
+# Add TXT record
+dnsedit txt myhost "v=spf1 include:_spf.example.com ~all" foo
+
+# Add A record without auto-PTR
+dnsedit -no-ptr ns1 192.168.1.10 foo
+
+# Show help
+dnsedit -h
 ```
 
 ## Future Updates (soon)
 
-- Help menu
-- Deleting entries
-- Adding CNAME entries
 - Better logic and more checks
-- Adding PTR together with A and override to not do so
+- Entry replacement/overwrite option
 
 ### Later updates (probably not soon - so if you want to fix this and do a PR, awesome)
-- Adding MX/SOA entries 
+- Adding SOA entries 
 - Checking if entries exist to delete/replace or prompt for their replacement
+- IPv6/AAAA records - NOT PLANNED at this time
 
 ## Support / Donation / Thanks options
 
 - BTC / Bitcoin Network: 335tkaVGpoe9Ff44XcPzEEJfDW5aUnsz3G
 - BTC / Ethereum Network: 0x2Ad50f6EcdE05C5e9c0E5F948D7F8Cc78A2806b1
 - ETH / Ethereum Network: 0xfb80606A020cd777E821ea3515EcFE3e58508aC8
-

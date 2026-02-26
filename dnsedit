@@ -4,6 +4,7 @@ BASE='' # Set your (lower case) domain zone name here (e.g. mynetwork.local)
 KEYFILE='' # Set the path to your key file for nsupdate here
 NAMEDCONF='/etc/bind/named.conf' # Path to named.conf file
 ASSUMEBASEZONE='Y' # When zone is unspecified, assume $BASE is the zone. (Any non-blank item is recognized as true)
+AUTOPTR='Y' # Auto-create PTR records when adding A records (use noptr to disable)
 
 # The DNSEDITCONF file can be configured with override values for the above options which will supercede 
 # the values specified in this script so this file can be used without editing
@@ -20,8 +21,52 @@ TYPE='A'
 OPERATION='Add'
 VERBOSE=''
 TTL=''
+YES='' # Non-interactive mode (skip confirmation)
 
-ALLZONES=($(grep 'zone ' "$NAMEDCONF" | awk '{print $2}' | tr '[:upper:]' '[:lower:]'))
+# Safe population of ALLZONES - check if NAMEDCONF exists first
+if [[ -f "$NAMEDCONF" ]]; then
+  ALLZONES=($(grep 'zone ' "$NAMEDCONF" | awk '{print $2}' | tr '[:upper:]' '[:lower:]'))
+else
+  ALLZONES=()
+  echo "Warning: $NAMEDCONF not found. Zone auto-detection disabled." >&2
+fi
+
+function usage() {
+  cat << EOF
+Usage: dnsedit [options] [entry] [ip] [zone]
+
+Options:
+  -?, -h, --help Show this help message
+  -v             Verbose output
+  -y             Yes/Non-interactive mode (skip confirmation)
+  -ip <addr>     Specify IP address
+  noptr          Don't auto-create PTR record when adding A record
+  <number>       Specify TTL
+
+Commands:
+  add            Add record (default)
+  del|rm|remove  Record to delete
+  list|ls        List records
+
+Record Types:
+  a              A record (default)
+  ptr            PTR record
+  ns             NS record
+  cname          CNAME record
+  mx             MX record
+  txt            TXT record
+
+Examples:
+  dnsedit ns1 192.168.1.10 foo.bar.local
+  dnsedit NS ns1 foo.bar.local
+  dnsedit -y del ns1 foo.bar.local
+  dnsedit list foo.bar.local
+  dnsedit -no-ptr ns1 192.168.1.10 foo.bar.local
+
+Note: Parameters can be provided in any order unless otherwise specified
+EOF
+  exit 0
+}
 
 function dump() {
   echo "ZONE: $ZONE ; IP: $IP"
@@ -32,16 +77,20 @@ function dump() {
 while [[ $# -gt 0 ]]; do
   lc="${1,,}"
   case $lc in
+    -\?|-h|--help) usage ;;
     a) TYPE='A' ;;
     ptr) TYPE='PTR' ;;
     ns) TYPE='NS' ;;
     cname) TYPE='CNAME' ;;
+    mx) TYPE='MX' ;;
+    txt) TYPE='TXT' ;;
     del|rem|remove|rm) OPERATION='Del' ;;
     add) OPERATION='Add' ;;
     list|ls) OPERATION='List' ;;
     -v*) VERBOSE='yes' ;;
+    -y) YES='yes' ;;
+    noptr) AUTOPTR='' ;;
     -ip) if [[ $2 =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then IP=$2; else echo "Invalid IP specified"; exit 1; fi; shift ;;
-    1*) IP=$1 ;;
     *)
       if [[ ${ALLZONES[@]} =~ \"$lc\" ]]; then ZONE=$lc
       elif [[ $lc =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then IP=$lc
@@ -69,6 +118,24 @@ BOT="show\nsend"
 function doAddA() {
   [[ -n $TTL ]] || TTL=86400
   echo -e "${TOP}update add $ENTRY.$ZONE $TTL $TYPE $IP\n${BOT}" | nsupdate -k "$KEYFILE"
+  
+  # Auto-create PTR if enabled and IP is IPv4
+  if [[ -n $AUTOPTR && $IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    PTRIP=$(awk -F. '{print $4"."$3"."$2"."$1}' <<<$IP)
+    # Find PTR zone
+    zonetmp="${PTRIP#*.*}.in-addr.arpa"
+    ZONEPTR=''
+    for n in $(seq 1 3); do
+      if [[ ${ALLZONES[@]} =~ "$zonetmp" ]]; then ZONEPTR=$zonetmp; fi
+      zonetmp="${zonetmp#*.*}"
+    done
+    if [[ -n $ZONEPTR ]]; then
+      echo "Auto-creating PTR record: $PTRIP.in-addr.arpa -> $ENTRY.$ZONE"
+      echo -e "server $SERVERIP\nzone $ZONEPTR\nupdate add $PTRIP.in-addr.arpa. 4800 PTR $ENTRY.$ZONE.\nshow\nsend" | nsupdate -k "$KEYFILE"
+    else
+      echo "Warning: Could not find PTR zone for $IP" >&2
+    fi
+  fi
 }
 
 function doDelA() {
@@ -77,7 +144,11 @@ function doDelA() {
 
 function doAddCNAME() {
   [[ -n $TTL ]] || TTL=4800
-  echo "not implemented"
+  echo -e "${TOP}update add $ENTRY.$ZONE $TTL CNAME $ENTRY2.$ZONE\n${BOT}" | nsupdate -k "$KEYFILE"
+}
+
+function doDelCNAME() {
+  echo -e "${TOP}update del $ENTRY.$ZONE CNAME $ENTRY2.$ZONE\n${BOT}" | nsupdate -k "$KEYFILE"
 }
 
 function doAddPTR() {
@@ -98,18 +169,41 @@ function doDelNS() {
   echo -e "${TOP}update del $ENTRY.$ZONE. $TYPE $ENTRY2.$ZONE\n${BOT}" | nsupdate -k "$KEYFILE"
 }
 
+function doAddMX() {
+  [[ -n $TTL ]] || TTL=3600
+  # MX records require priority (first number) - use 10 as default
+  local PRIORITY=10
+  echo -e "${TOP}update add $ZONE $TTL MX $PRIORITY $ENTRY.$ZONE\n${BOT}" | nsupdate -k "$KEYFILE"
+}
+
+function doDelMX() {
+  echo -e "${TOP}update del $ZONE MX $ENTRY.$ZONE\n${BOT}" | nsupdate -k "$KEYFILE"
+}
+
+function doAddTXT() {
+  [[ -n $TTL ]] || TTL=3600
+  # ENTRY2 contains the TXT value
+  echo -e "${TOP}update add $ENTRY.$ZONE $TTL TXT \"$ENTRY2\"\n${BOT}" | nsupdate -k "$KEYFILE"
+}
+
+function doDelTXT() {
+  echo -e "${TOP}update del $ENTRY.$ZONE TXT\n${BOT}" | nsupdate -k "$KEYFILE"
+}
+
 function isPTR() { [[ $TYPE == PTR ]]; }
 function isNS() { [[ $TYPE == NS ]]; }
 function isA() { [[ $TYPE == A ]]; }
 function isCNAME() { [[ $TYPE == CNAME ]]; }
+function isMX() { [[ $TYPE == MX ]]; }
+function isTXT() { [[ $TYPE == TXT ]]; }
 function isAdd() { [[ $OPERATION == 'Add' ]]; }
 function isDel() { [[ $OPERATION == 'Del' ]]; }
 
 function lookupZone() {
-  grep "^$1.$ZONE" <<<$EXISTING_RECORDS
+  grep "^$1.$ZONE" <<<$EXISTING_RECORDS 2>/dev/null || true
 }
 function lookupIP() {
-  grep "$1$" <<<$EXISTING_RECORDS
+  grep "$1$" <<<$EXISTING_RECORDS 2>/dev/null || true
 }
 
 function check() {
@@ -136,8 +230,10 @@ function check() {
   elif [[ -z $ENTRY ]]; then echo "You did not specify a name to edit"; return 1
   elif isNS && [[ -z $ENTRY2 ]]; then echo "You did not specify a glue record to add"; return 1
   elif isCNAME && [[ -z $has_name2 ]]; then echo "Specified A record does not exist - create the A record first"; return 1
+  elif isMX && [[ -z $ENTRY ]]; then echo "You did not specify a mailserver name for MX record"; return 1
+  elif isTXT && [[ -z $ENTRY2 ]]; then echo "You did not specify TXT record value"; return 1
   elif isNS && [[ -z $has_name2 ]]; then echo "Specified glue record '$ENTRY2' does not exist"; return 1
-  elif [[ -z $IP ]] && ! isNS && ! isCNAME; then echo "You did not specify an IP to add"; return 1
+  elif [[ -z $IP ]] && ! isNS && ! isCNAME && ! isMX && ! isTXT; then echo "You did not specify an IP to add"; return 1
   elif (isAdd && [[ -n $has_ip ]] && ! isPTR); then echo "IP exists already $has_ip"; return 1
   #elif (isDel && [[ -z $has_ip ]]); then echo "Cannot find IP $IP to delete!"; return 1
   elif (isDel && [[ -z $has_name ]]); then echo "Cannot find $ENTRY to delete it!"; return 1
@@ -153,8 +249,14 @@ function check() {
   echo -n " $TYPE $ENTRY "
   if isNS; then echo "to zone $ZONE stub $ENTRY2"
   elif isCNAME; then echo "-> $ENTRY2 to zone $ZONE"
+  elif isMX; then echo "to zone $ZONE"
+  elif isTXT; then echo "to zone $ZONE"
   else echo "with IP $IP to zone $ZONE"; fi
-  read -p "Press <enter> to continue"
+  if [[ -n $YES ]]; then
+    echo "(non-interactive mode)"
+  else
+    read -p "Press <enter> to continue"
+  fi
   # Return 0 to continue
   return 0
 }
@@ -162,5 +264,19 @@ function check() {
 if [[ $OPERATION == List ]]; then
   dig +noquestion +nocmd +nocomments +nostat @$SERVERIP AXFR $ZONE | grep -w $TYPE
 elif check; then
-  eval "do${OPERATION}${TYPE}"
+  case "${OPERATION}${TYPE}" in
+    AddA) doAddA ;;
+    DelA) doDelA ;;
+    AddPTR) doAddPTR ;;
+    DelPTR) doDelPTR ;;
+    AddNS) doAddNS ;;
+    DelNS) doDelNS ;;
+    AddCNAME) doAddCNAME ;;
+    DelCNAME) doDelCNAME ;;
+    AddMX) doAddMX ;;
+    DelMX) doDelMX ;;
+    AddTXT) doAddTXT ;;
+    DelTXT) doDelTXT ;;
+    *) echo "Unknown operation: $OPERATION $TYPE"; exit 1 ;;
+  esac
 fi

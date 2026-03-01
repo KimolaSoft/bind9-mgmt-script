@@ -11,6 +11,7 @@ Bind9 management script to simplify adding and removing records via nsupdate
 - Non-interactive mode for scripting (`-y` flag)
 - Automatic PTR record creation when adding A records (use `noptr` to disable)
 - Help menu available (`-?` or `-h` or `--help`)
+- Colorized output (when output is to a terminal)
 
 ## Use
 

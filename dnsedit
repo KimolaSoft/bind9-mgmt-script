@@ -23,6 +23,36 @@ VERBOSE=''
 TTL=''
 YES='' # Non-interactive mode (skip confirmation)
 
+# Color codes - only use if output is to a terminal
+if [[ -t 1 ]]; then
+  RED='\033[0;31m'
+  GREEN='\033[0;32m'
+  YELLOW='\033[0;33m'
+  BLUE='\033[0;34m'
+  MAGENTA='\033[0;35m'
+  CYAN='\033[0;36m'
+  WHITE='\033[0;37m'
+  BOLD='\033[1m'
+  RESET='\033[0m'
+  
+  function colorize() { echo -e "$1$2$RESET"; }
+  function red()    { colorize "$RED" "$1"; }
+  function green()  { colorize "$GREEN" "$1"; }
+  function yellow(){ colorize "$YELLOW" "$1"; }
+  function blue()  { colorize "$BLUE" "$1"; }
+  function magenta(){ colorize "$MAGENTA" "$1"; }
+  function cyan()  { colorize "$CYAN" "$1"; }
+  function bold()  { colorize "$BOLD" "$1"; }
+else
+  function red()    { echo "$1"; }
+  function green()  { echo "$1"; }
+  function yellow(){ echo "$1"; }
+  function blue()  { echo "$1"; }
+  function magenta(){ echo "$1"; }
+  function cyan()  { echo "$1"; }
+  function bold()  { echo "$1"; }
+fi
+
 # Safe population of ALLZONES - check if NAMEDCONF exists first
 if [[ -f "$NAMEDCONF" ]]; then
   ALLZONES=($(grep 'zone ' "$NAMEDCONF" | awk '{print $2}' | tr '[:upper:]' '[:lower:]'))
@@ -32,39 +62,37 @@ else
 fi
 
 function usage() {
-  cat << EOF
-Usage: dnsedit [options] [entry] [ip] [zone]
-
-Options:
-  -?, -h, --help Show this help message
-  -v             Verbose output
-  -y             Yes/Non-interactive mode (skip confirmation)
-  -ip <addr>     Specify IP address
-  noptr          Don't auto-create PTR record when adding A record
-  <number>       Specify TTL
-
-Commands:
-  add            Add record (default)
-  del|rm|remove  Record to delete
-  list|ls        List records
-
-Record Types:
-  a              A record (default)
-  ptr            PTR record
-  ns             NS record
-  cname          CNAME record
-  mx             MX record
-  txt            TXT record
-
-Examples:
-  dnsedit ns1 192.168.1.10 foo.bar.local
-  dnsedit NS ns1 foo.bar.local
-  dnsedit -y del ns1 foo.bar.local
-  dnsedit list foo.bar.local
-  dnsedit -no-ptr ns1 192.168.1.10 foo.bar.local
-
-Note: Parameters can be provided in any order unless otherwise specified
-EOF
+  echo -e "${BOLD}Usage:${RESET} dnsedit [options] [entry] [ip] [zone]"
+  echo
+  echo -e "${BOLD}Options:${RESET}"
+  echo -e "  ${CYAN}-?, -h, --help${RESET} Show this help message"
+  echo -e "  ${CYAN}-v${RESET}             Verbose output"
+  echo -e "  ${CYAN}-y${RESET}             Yes/Non-interactive mode (skip confirmation)"
+  echo -e "  ${CYAN}-ip <addr>${RESET}     Specify IP address"
+  echo -e "  ${CYAN}noptr${RESET}          Don't auto-create PTR record when adding A record"
+  echo -e "  <number>       Specify TTL"
+  echo
+  echo -e "${BOLD}Commands:${RESET}"
+  echo -e "  ${GREEN}add${RESET}            Add record (default)"
+  echo -e "  ${GREEN}del|rm|remove${RESET}  Record to delete"
+  echo -e "  ${GREEN}list|ls${RESET}       List records"
+  echo
+  echo -e "${BOLD}Record Types:${RESET}"
+  echo -e "  ${CYAN}a${RESET}              A record (default)"
+  echo -e "  ${CYAN}ptr${RESET}            PTR record"
+  echo -e "  ${CYAN}ns${RESET}             NS record"
+  echo -e "  ${CYAN}cname${RESET}          CNAME record"
+  echo -e "  ${CYAN}mx${RESET}             MX record"
+  echo -e "  ${CYAN}txt${RESET}            TXT record"
+  echo
+  echo -e "${BOLD}Examples:${RESET}"
+  echo -e "  ${YELLOW}dnsedit ns1 192.168.1.10 foo.bar.local${RESET}"
+  echo -e "  ${YELLOW}dnsedit NS ns1 foo.bar.local${RESET}"
+  echo -e "  ${YELLOW}dnsedit -y del ns1 foo.bar.local${RESET}"
+  echo -e "  ${YELLOW}dnsedit list foo.bar.local${RESET}"
+  echo -e "  ${YELLOW}dnsedit -no-ptr ns1 192.168.1.10 foo.bar.local${RESET}"
+  echo
+  echo "Note: Parameters can be provided in any order unless otherwise specified"
   exit 0
 }
 
@@ -213,36 +241,36 @@ function check() {
     has_ptr=$(dig +noquestion +nocmd +nocomments +nostat @$SERVERIP AXFR $ZONEPTR | grep "^$PTRIP.in-addr.arpa")
   fi
   # Perform checks
-  if [[ -z $ZONE ]]; then echo "You did not specify a zone"; return 1
-  elif [[ -z $ENTRY ]]; then echo "You did not specify a name to edit"; return 1
-  elif isNS && [[ -z $ENTRY2 ]]; then echo "You did not specify a glue record to add"; return 1
-  elif isCNAME && [[ -z $has_name2 ]]; then echo "Specified A record does not exist - create the A record first"; return 1
-  elif isMX && [[ -z $ENTRY ]]; then echo "You did not specify a mailserver name for MX record"; return 1
-  elif isTXT && [[ -z $ENTRY2 ]]; then echo "You did not specify TXT record value"; return 1
-  elif isNS && [[ -z $has_name2 ]]; then echo "Specified glue record '$ENTRY2' does not exist"; return 1
-  elif [[ -z $IP ]] && ! isNS && ! isCNAME && ! isMX && ! isTXT; then echo "You did not specify an IP to add"; return 1
-  elif (isAdd && [[ -n $has_ip ]] && ! isPTR); then echo "IP exists already $has_ip"; return 1
-  #elif (isDel && [[ -z $has_ip ]]); then echo "Cannot find IP $IP to delete!"; return 1
-  elif (isDel && [[ -z $has_name ]]); then echo "Cannot find $ENTRY to delete it!"; return 1
-  elif [[ -z $has_name ]] && isPTR; then echo "Name $ENTRY does not exist yet!"; return 1
-  elif isPTR && [[ -z $ZONEPTR ]]; then echo "Could not identify PTR zone for $IP"; return 1
-  elif isPTR && [[ -n $has_ptr ]]; then echo "PTR record already exists!"; return 1
+  if [[ -z $ZONE ]]; then echo "$(red 'Error:') You did not specify a zone"; return 1
+  elif [[ -z $ENTRY ]]; then echo "$(red 'Error:') You did not specify a name to edit"; return 1
+  elif isNS && [[ -z $ENTRY2 ]]; then echo "$(red 'Error:') You did not specify a glue record to add"; return 1
+  elif isCNAME && [[ -z $has_name2 ]]; then echo "$(red 'Error:') Specified A record does not exist - create the A record first"; return 1
+  elif isMX && [[ -z $ENTRY ]]; then echo "$(red 'Error:') You did not specify a mailserver name for MX record"; return 1
+  elif isTXT && [[ -z $ENTRY2 ]]; then echo "$(red 'Error:') You did not specify TXT record value"; return 1
+  elif isNS && [[ -z $has_name2 ]]; then echo "$(red 'Error:') Specified glue record '$ENTRY2' does not exist"; return 1
+  elif [[ -z $IP ]] && ! isNS && ! isCNAME && ! isMX && ! isTXT; then echo "$(red 'Error:') You did not specify an IP to add"; return 1
+  elif (isAdd && [[ -n $has_ip ]] && ! isPTR); then echo "$(red 'Error:') IP exists already $has_ip"; return 1
+  #elif (isDel && [[ -z $has_ip ]]); then echo "$(red 'Error:') Cannot find IP $IP to delete!"; return 1
+  elif (isDel && [[ -z $has_name ]]); then echo "$(red 'Error:') Cannot find $ENTRY to delete it!"; return 1
+  elif [[ -z $has_name ]] && isPTR; then echo "$(red 'Error:') Name $ENTRY does not exist yet!"; return 1
+  elif isPTR && [[ -z $ZONEPTR ]]; then echo "$(red 'Error:') Could not identify PTR zone for $IP"; return 1
+  elif isPTR && [[ -n $has_ptr ]]; then echo "$(red 'Error:') PTR record already exists!"; return 1
   fi
   # Warnings only
-  if (isA || isPTR) && [[ -z $ZONEPTR ]]; then echo "PTR Zone not found for $IP"
-  elif (isAdd && [[ -n $has_name ]] && ! isPTR); then echo "Name exists already $has_name"
+  if (isA || isPTR) && [[ -z $ZONEPTR ]]; then echo "$(yellow 'Warning:') PTR Zone not found for $IP"
+  elif (isAdd && [[ -n $has_name ]] && ! isPTR); then echo "$(yellow 'Warning:') Name exists already $has_name"
   fi
-  if isAdd; then echo -n 'Adding'; elif isDel; then echo -n 'Deleting'; fi
+  if isAdd; then echo -n "$(green 'Adding')"; elif isDel; then echo -n "$(red 'Deleting')"; fi
   echo -n " $TYPE $ENTRY "
   if isNS; then echo "to zone $ZONE stub $ENTRY2"
-  elif isCNAME; then echo "-> $ENTRY2 to zone $ZONE"
+  elif isCNAME; then echo "$(yellow '->') $ENTRY2 to zone $ZONE"
   elif isMX; then echo "to zone $ZONE"
   elif isTXT; then echo "to zone $ZONE"
   else echo "with IP $IP to zone $ZONE"; fi
   if [[ -n $YES ]]; then
-    echo "(non-interactive mode)"
+    echo "$(green '(non-interactive mode)')"
   else
-    read -p "Press <enter> to continue"
+    read -p "$(bold 'Press <enter> to continue')"
   fi
   # Return 0 to continue
   return 0
